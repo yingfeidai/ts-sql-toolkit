@@ -1,0 +1,28 @@
+{
+  "name": "@yingfeidai/ts-sql-toolkit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "pnpm build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yingfeidai/ts-sql-toolkit.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "keywords": [
+    "typescript",
+    "sql",
+    "repository",
+    "query builder"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}
