@@ -9,6 +9,7 @@ export const operatorTypes = {
   NOT_LIKE: "NOT LIKE",
   IN: "IN",
   NOT_IN: "NOT IN",
+  BINARY: "BINARY",
 } as const;
 
 export type OperatorTypesEnum =

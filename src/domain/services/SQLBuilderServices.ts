@@ -1,15 +1,16 @@
-import { DeleteParams } from "../dtos/DeleteParams";
-import { InsertParams } from "../dtos/InsertParams";
-import { QueryParams } from "../dtos/QueryParams";
-import { UpdateParams } from "../dtos/UpdateParams";
-import { joinTypes } from "../enums/JoinTypesEnum";
-import { operatorTypes } from "../enums/OperatorTypesEnum";
-import { orderByTypes } from "../enums/OrderByTypesEnum";
-import { ISQLBuilder } from "../interfaces/ISQLBuilder";
 import { JoinOptionsType } from "../types/JoinOptionsType";
 import { OrderByOptionsType } from "../types/OrderByOptionsType";
 import { PaginationOptionsType } from "../types/PaginationOptionsType";
 import { WhereOptionsType } from "../types/WhereOptionsType";
+import { InsertParams } from "../dtos/InsertParams";
+import { QueryParams } from "../dtos/QueryParams";
+import { UpdateParams } from "../dtos/UpdateParams";
+import { DeleteParams } from "../dtos/DeleteParams";
+import { ISQLBuilder } from "../interfaces/ISQLBuilder";
+import { joinTypes } from "../enums/JoinTypesEnum";
+import { operatorTypes } from "../enums/OperatorTypesEnum";
+import { orderByTypes } from "../enums/OrderByTypesEnum";
+import { CountParams } from "../dtos/CountParams";
 
 export class SQLBuilder<FieldsEnum extends string>
   implements ISQLBuilder<FieldsEnum>
@@ -35,6 +36,21 @@ export class SQLBuilder<FieldsEnum extends string>
 
     if (params.pagination) {
       query += this.buildPaginationClause(params.pagination);
+    }
+
+    return query;
+  }
+
+  buildCountQuery(table: string, params: CountParams<FieldsEnum>): string {
+    const selectField = params.select ? params.select : "*";
+    let query = `SELECT COUNT(${selectField}) AS count FROM ${table}`;
+
+    if (params.join?.length) {
+      query += this.buildJoinClauses(params.join);
+    }
+
+    if (params.where?.length) {
+      query += this.buildWhereClause(params.where);
     }
 
     return query;
@@ -83,12 +99,14 @@ export class SQLBuilder<FieldsEnum extends string>
 
   private buildWhereClause(where: WhereOptionsType<FieldsEnum>[]): string {
     return `WHERE ${where
-      .map(
-        (condition) =>
-          `${condition.field} ${condition.operator || operatorTypes.EQUALS} '${
-            condition.value
-          }'`
-      )
+      .map((condition) => {
+        const operator = condition.operator || operatorTypes.EQUALS;
+        const value =
+          operator === operatorTypes.BINARY
+            ? `${operatorTypes.BINARY} '${condition.value}'`
+            : `'${condition.value}'`;
+        return `${condition.field} ${operator} ${value}`;
+      })
       .join(" AND ")}`;
   }
 

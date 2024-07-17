@@ -19,4 +19,6 @@ export type ConditionValueType<Operator extends OperatorTypesEnum> =
     ? never
     : Operator extends "ANY" | "SOME" | "ALL"
     ? any[]
+    : Operator extends "BINARY"
+    ? string
     : any;
