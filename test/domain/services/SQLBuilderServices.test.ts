@@ -1,7 +1,7 @@
-import { operatorTypes } from "../../../domain/enums/OperatorTypesEnum";
-import { orderByTypes } from "../../../domain/enums/OrderByTypesEnum";
-import { joinTypes } from "../../../domain/enums/JoinTypesEnum";
-import { SQLBuilder } from "../../../domain/services/SQLBuilderServices";
+import { operatorTypes } from "../../../src/domain/enums/OperatorTypesEnum";
+import { orderByTypes } from "../../../src/domain/enums/OrderByTypesEnum";
+import { joinTypes } from "../../../src/domain/enums/JoinTypesEnum";
+import { SQLBuilder } from "../../../src/domain/services/SQLBuilderServices";
 
 enum Fields {
   ID = "id",
@@ -99,6 +99,16 @@ describe("SQLBuilder", () => {
     );
   });
 
+  it("should build a SELECT query with BINARY operator", () => {
+    const query = builder.buildSelectQuery("users", {
+      where: [
+        { field: Fields.NAME, operator: operatorTypes.BINARY, value: "John" },
+      ],
+    });
+
+    expect(query).toBe("SELECT * FROM users WHERE name BINARY 'John'");
+  });
+
   it("should build a batch INSERT query", () => {
     const query = builder.buildInsertQuery("users", {
       data: [
@@ -137,5 +147,42 @@ describe("SQLBuilder", () => {
     });
 
     expect(query).toBe("DELETE FROM users WHERE id IN ('1', '2', '3')");
+  });
+
+  it("should build a COUNT query", () => {
+    const query = builder.buildCountQuery("users", {
+      where: [
+        { field: Fields.AGE, operator: operatorTypes.GREATER_THAN, value: 18 },
+      ],
+    });
+
+    expect(query).toBe("SELECT COUNT(*) AS count FROM users WHERE age > '18'");
+  });
+
+  it("should build a COUNT query with JOIN clause", () => {
+    const query = builder.buildCountQuery("users", {
+      join: [
+        {
+          type: joinTypes.INNER,
+          table: "orders",
+          on: "users.id = orders.user_id",
+        },
+      ],
+    });
+
+    expect(query).toBe(
+      "SELECT COUNT(*) AS count FROM users INNER JOIN orders ON users.id = orders.user_id"
+    );
+  });
+
+  it("should build a COUNT query with specific field", () => {
+    const query = builder.buildCountQuery("users", {
+      select: Fields.ID,
+      where: [
+        { field: Fields.AGE, operator: operatorTypes.GREATER_THAN, value: 18 },
+      ],
+    });
+
+    expect(query).toBe("SELECT COUNT(id) AS count FROM users WHERE age > '18'");
   });
 });

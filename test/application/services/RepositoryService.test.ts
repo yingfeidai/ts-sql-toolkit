@@ -1,17 +1,17 @@
-import { FindAllParams } from "../../../application/dtos/FindAllParams";
-import { FindByIdParams } from "../../../application/dtos/FindByIdParams";
-import { FindManyParams } from "../../../application/dtos/FindManyParams";
-import { FindOneParams } from "../../../application/dtos/FindOneParams";
-import { ReplaceParams } from "../../../application/dtos/ReplaceParams";
-import { UpsertParams } from "../../../application/dtos/UpsertParams";
-import { Repository } from "../../../application/services/RepositoryService";
-import { BatchInsertParams } from "../../../domain/dtos/BatchInsertParams";
-import { DeleteParams } from "../../../domain/dtos/DeleteParams";
-import { InsertParams } from "../../../domain/dtos/InsertParams";
-import { UpdateParams } from "../../../domain/dtos/UpdateParams";
-import { operatorTypes } from "../../../domain/enums/OperatorTypesEnum";
-import { SQLManager } from "../../../domain/services/SQLManagerService";
-import { Mapper } from "../../../infrastructure/database/mappers/Mapper";
+import { FindAllParams } from "../../../src/application/dtos/FindAllParams";
+import { FindByIdParams } from "../../../src/application/dtos/FindByIdParams";
+import { FindManyParams } from "../../../src/application/dtos/FindManyParams";
+import { FindOneParams } from "../../../src/application/dtos/FindOneParams";
+import { ReplaceParams } from "../../../src/application/dtos/ReplaceParams";
+import { UpsertParams } from "../../../src/application/dtos/UpsertParams";
+import { Repository } from "../../../src/application/services/RepositoryService";
+import { BatchInsertParams } from "../../../src/domain/dtos/BatchInsertParams";
+import { DeleteParams } from "../../../src/domain/dtos/DeleteParams";
+import { InsertParams } from "../../../src/domain/dtos/InsertParams";
+import { UpdateParams } from "../../../src/domain/dtos/UpdateParams";
+import { operatorTypes } from "../../../src/domain/enums/OperatorTypesEnum";
+import { SQLManager } from "../../../src/domain/services/SQLManagerService";
+import { Mapper } from "../../../src/infrastructure/database/mappers/Mapper";
 
 enum Fields {
   ID = "id",
