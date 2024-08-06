@@ -1,12 +1,12 @@
-import { BatchInsertParams } from "../../../domain/dtos/BatchInsertParams";
-import { DeleteParams } from "../../../domain/dtos/DeleteParams";
-import { InsertParams } from "../../../domain/dtos/InsertParams";
-import { QueryParams } from "../../../domain/dtos/QueryParams";
-import { UpdateParams } from "../../../domain/dtos/UpdateParams";
-import { operatorTypes } from "../../../domain/enums/OperatorTypesEnum";
-import { ISQLBuilder } from "../../../domain/interfaces/ISQLBuilder";
-import { ISQLExecutor } from "../../../domain/interfaces/ISQLExecutor";
-import { SQLManager } from "../../../domain/services/SQLManagerService";
+import { BatchInsertParams } from "../../../src/domain/dtos/BatchInsertParams";
+import { DeleteParams } from "../../../src/domain/dtos/DeleteParams";
+import { InsertParams } from "../../../src/domain/dtos/InsertParams";
+import { QueryParams } from "../../../src/domain/dtos/QueryParams";
+import { UpdateParams } from "../../../src/domain/dtos/UpdateParams";
+import { operatorTypes } from "../../../src/domain/enums/OperatorTypesEnum";
+import { ISQLBuilder } from "../../../src/domain/interfaces/ISQLBuilder";
+import { ISQLExecutor } from "../../../src/domain/interfaces/ISQLExecutor";
+import { SQLManager } from "../../../src/domain/services/SQLManagerService";
 
 enum Fields {
   ID = "id",
@@ -114,13 +114,11 @@ describe("SQLManager", () => {
       batchSize: 1,
     };
 
-    const operations: ((executor: ISQLExecutor) => Promise<void>)[] = [
-      expect.any(Function),
-    ];
-
     await sqlManager.batchInsertWithTransaction(table, params);
 
-    expect(mockSqlExecutor.executeTransaction).toHaveBeenCalledWith(operations);
+    expect(mockSqlExecutor.executeTransaction).toHaveBeenCalledWith(
+      expect.any(Array)
+    );
   });
 
   it("should execute batch insert with errors", async () => {
@@ -204,5 +202,59 @@ describe("SQLManager", () => {
     await sqlManager.executeTransaction(operations);
 
     expect(mockSqlExecutor.executeTransaction).toHaveBeenCalledWith(operations);
+  });
+
+  it("should handle errors during a transaction", async () => {
+    const operations: ((executor: ISQLExecutor) => Promise<void>)[] = [
+      async (executor) => {
+        await executor.executeRaw(
+          'INSERT INTO testTable (id, name) VALUES (1, "test")'
+        );
+      },
+      async (executor) => {
+        throw new Error("Transaction error");
+      },
+    ];
+
+    mockSqlExecutor.executeTransaction.mockImplementation(async (ops) => {
+      for (const op of ops) {
+        await op(mockSqlExecutor);
+      }
+    });
+
+    await expect(sqlManager.executeTransaction(operations)).rejects.toThrow(
+      "Transaction error"
+    );
+    expect(mockSqlExecutor.executeTransaction).toHaveBeenCalledWith(operations);
+  });
+
+  it("should rollback a transaction on error", async () => {
+    const operations: ((executor: ISQLExecutor) => Promise<void>)[] = [
+      async (executor) => {
+        await executor.executeRaw(
+          'INSERT INTO testTable (id, name) VALUES (1, "test")'
+        );
+      },
+      async (executor) => {
+        throw new Error("Rollback error");
+      },
+    ];
+
+    mockSqlExecutor.executeTransaction.mockImplementation(async (ops) => {
+      try {
+        for (const op of ops) {
+          await op(mockSqlExecutor);
+        }
+      } catch (error) {
+        await mockSqlExecutor.executeRaw("ROLLBACK");
+        throw error;
+      }
+    });
+
+    await expect(sqlManager.executeTransaction(operations)).rejects.toThrow(
+      "Rollback error"
+    );
+    expect(mockSqlExecutor.executeTransaction).toHaveBeenCalledWith(operations);
+    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith("ROLLBACK");
   });
 });
