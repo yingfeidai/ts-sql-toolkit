@@ -1,17 +1,3 @@
-// import {
-//   FindByIdInput,
-//   FindOneInput,
-//   FindManyInput,
-//   FindAllInput,
-//   CreateInput,
-//   UpdateInput,
-//   DeleteInput,
-//   BatchCreateInput,
-//   AffectedRows,
-//   UpsertInput,
-//   ReplaceInput,
-// } from "../dtos/repository.dto";
-
 import { BatchInsertParams } from "../../domain/dtos/BatchInsertParams";
 import { DeleteParams } from "../../domain/dtos/DeleteParams";
 import {
