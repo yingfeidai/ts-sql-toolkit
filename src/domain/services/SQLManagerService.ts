@@ -22,26 +22,20 @@ export class SQLManager<FieldsEnum extends string>
     this.sqlBuilder = sqlBuilder;
   }
 
-  async select(
-    table: string,
-    params: QueryParams<FieldsEnum>
-  ): Promise<any[]> {
-    const query = this.sqlBuilder.buildSelectQuery(table, params);
+  async select(table: string, params: QueryParams<FieldsEnum>): Promise<any[]> {
+    const { query, values } = this.sqlBuilder.buildSelectQuery(table, params);
     try {
-      return await this.sqlExecutor.queryRaw<any[]>(query);
+      return await this.sqlExecutor.queryRaw<any[]>(query, values);
     } catch (error) {
       console.error("Error executing select query:", error);
       throw error;
     }
   }
 
-  async insert(
-    table: string,
-    params: InsertParams<FieldsEnum>
-  ): Promise<void> {
-    const query = this.sqlBuilder.buildInsertQuery(table, params);
+  async insert(table: string, params: InsertParams<FieldsEnum>): Promise<void> {
+    const { query, values } = this.sqlBuilder.buildInsertQuery(table, params);
     try {
-      await this.sqlExecutor.executeRaw(query);
+      await this.sqlExecutor.executeRaw(query, values);
     } catch (error) {
       console.error("Error executing insert query:", error);
       throw error;
@@ -52,9 +46,9 @@ export class SQLManager<FieldsEnum extends string>
     table: string,
     params: UpdateParams<FieldsEnum>
   ): Promise<ExecutionResult> {
-    const query = this.sqlBuilder.buildUpdateQuery(table, params);
+    const { query, values } = this.sqlBuilder.buildUpdateQuery(table, params);
     try {
-      const affectedRows = await this.sqlExecutor.executeRaw(query);
+      const affectedRows = await this.sqlExecutor.executeRaw(query, values);
       return { affectedRows };
     } catch (error) {
       console.error("Error executing update query:", error);
@@ -66,9 +60,9 @@ export class SQLManager<FieldsEnum extends string>
     table: string,
     params: DeleteParams<FieldsEnum>
   ): Promise<ExecutionResult> {
-    const query = this.sqlBuilder.buildDeleteQuery(table, params);
+    const { query, values } = this.sqlBuilder.buildDeleteQuery(table, params);
     try {
-      const affectedRows = await this.sqlExecutor.executeRaw(query);
+      const affectedRows = await this.sqlExecutor.executeRaw(query, values);
       return { affectedRows };
     } catch (error) {
       console.error("Error executing delete query:", error);
