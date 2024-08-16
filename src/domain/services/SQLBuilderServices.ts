@@ -8,7 +8,6 @@ import { UpdateParams } from "../dtos/UpdateParams";
 import { DeleteParams } from "../dtos/DeleteParams";
 import { ISQLBuilder } from "../interfaces/ISQLBuilder";
 import { joinTypes } from "../enums/JoinTypesEnum";
-import { operatorTypes } from "../enums/OperatorTypesEnum";
 import { orderByTypes } from "../enums/OrderByTypesEnum";
 import { CountParams } from "../dtos/CountParams";
 import { SQLQueryResult } from "../dtos/SQLQueryResult";
@@ -24,16 +23,17 @@ export class SQLBuilder<FieldsEnum extends string>
     const baseQuery = `SELECT ${this.buildFieldsClause(
       params.select
     )} FROM ${table}`;
-    return this.buildQuery(baseQuery, params);
+    return this.buildBaseQuery(baseQuery, params);
   }
 
   buildCountQuery(
     table: string,
     params: CountParams<FieldsEnum>
   ): SQLQueryResult {
-    const selectField = params.select ? params.select : "*";
+    const selectField = params.select ? "?" : "*";
+    const values = params.select ? [params.select] : [];
     const baseQuery = `SELECT COUNT(${selectField}) AS count FROM ${table}`;
-    return this.buildQuery(baseQuery, params);
+    return this.buildBaseQuery(baseQuery, params, values);
   }
 
   buildInsertQuery(
@@ -72,14 +72,15 @@ export class SQLBuilder<FieldsEnum extends string>
     return { query, values: whereClause.values };
   }
 
-  private buildQuery(
+  private buildBaseQuery(
     baseQuery: string,
-    params: QueryParams<FieldsEnum> | CountParams<FieldsEnum>
+    params: QueryParams<FieldsEnum> | CountParams<FieldsEnum>,
+    additionalValues: any[] = []
   ): SQLQueryResult {
     const joinClause = this.buildJoinClauses(params.join);
     const whereClause = this.buildWhereClause(params.where);
     let query = `${baseQuery} ${joinClause} ${whereClause.query}`.trim();
-    let values = whereClause.values;
+    let values = [...additionalValues, ...whereClause.values];
 
     if (this.isQueryParams(params)) {
       const groupByClause = this.buildGroupByClause(params.groupBy);
@@ -151,12 +152,6 @@ export class SQLBuilder<FieldsEnum extends string>
     return { fields: fields.join(", "), placeholders, values };
   }
 
-  private isQueryParams(
-    params: QueryParams<FieldsEnum> | CountParams<FieldsEnum>
-  ): params is QueryParams<FieldsEnum> {
-    return (params as QueryParams<FieldsEnum>).pagination !== undefined;
-  }
-
   private buildClause<FieldsEnum>(
     items?: FieldsEnum[],
     buildFn: (item: FieldsEnum) => string = (item: FieldsEnum) => `${item}`
@@ -166,7 +161,7 @@ export class SQLBuilder<FieldsEnum extends string>
   }
 
   private buildGroupByClause(fields?: FieldsEnum[]): string {
-    return this.buildClause(fields, (field) => field);
+    return this.buildClause(fields, (field) => `GROUP BY ${field}`);
   }
 
   private buildOrderByClause(
@@ -174,7 +169,8 @@ export class SQLBuilder<FieldsEnum extends string>
   ): string {
     return this.buildClause(
       orderBy,
-      (order) => `${order.field} ${order.direction || orderByTypes.ASC}`
+      (order) =>
+        `ORDER BY ${order.field} ${order.direction || orderByTypes.ASC}`
     );
   }
 
@@ -182,5 +178,11 @@ export class SQLBuilder<FieldsEnum extends string>
     if (!pagination || pagination.limit === -1) return "";
 
     return `LIMIT ${pagination.limit || 10} OFFSET ${pagination.offset || 0}`;
+  }
+
+  private isQueryParams(
+    params: QueryParams<FieldsEnum> | CountParams<FieldsEnum>
+  ): params is QueryParams<FieldsEnum> {
+    return (params as QueryParams<FieldsEnum>).pagination !== undefined;
   }
 }
