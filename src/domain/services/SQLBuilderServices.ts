@@ -23,7 +23,7 @@ export class SQLBuilder<FieldsEnum extends string>
     const baseQuery = `SELECT ${this.buildFieldsClause(
       params.select
     )} FROM ${table}`;
-    return this.buildBaseQuery(baseQuery, params);
+    return this.buildFullSelectQuery(baseQuery, params);
   }
 
   buildCountQuery(
@@ -31,9 +31,12 @@ export class SQLBuilder<FieldsEnum extends string>
     params: CountParams<FieldsEnum>
   ): SQLQueryResult {
     const selectField = params.select ? "?" : "*";
-    const values = params.select ? [params.select] : [];
     const baseQuery = `SELECT COUNT(${selectField}) AS count FROM ${table}`;
-    return this.buildBaseQuery(baseQuery, params, values);
+    return this.buildFullCountQuery(
+      baseQuery,
+      params,
+      params.select ? [params.select] : []
+    );
   }
 
   buildInsertQuery(
@@ -43,10 +46,12 @@ export class SQLBuilder<FieldsEnum extends string>
     const { fields, placeholders, values } = this.buildInsertValues(
       params.data
     );
-    const query = `INSERT INTO ${table} (${fields}) VALUES ${placeholders.join(
-      ", "
-    )}`;
-    return { query, values };
+    return {
+      query: `INSERT INTO ${table} (${fields}) VALUES ${placeholders.join(
+        ", "
+      )}`,
+      values,
+    };
   }
 
   buildUpdateQuery(
@@ -55,12 +60,11 @@ export class SQLBuilder<FieldsEnum extends string>
   ): SQLQueryResult {
     const setClause = this.buildSetClause(params.data);
     const whereClause = this.buildWhereClause(params.where);
-
-    const query =
-      `UPDATE ${table} SET ${setClause.query} ${whereClause.query}`.trim();
-    const values = [...setClause.values, ...whereClause.values];
-
-    return { query, values };
+    return {
+      query:
+        `UPDATE ${table} SET ${setClause.query} ${whereClause.query}`.trim(),
+      values: [...setClause.values, ...whereClause.values],
+    };
   }
 
   buildDeleteQuery(
@@ -68,29 +72,54 @@ export class SQLBuilder<FieldsEnum extends string>
     params: DeleteParams<FieldsEnum>
   ): SQLQueryResult {
     const whereClause = this.buildWhereClause(params.where);
-    const query = `DELETE FROM ${table} ${whereClause.query}`.trim();
-    return { query, values: whereClause.values };
+    return {
+      query: `DELETE FROM ${table} ${whereClause.query}`.trim(),
+      values: whereClause.values,
+    };
   }
 
-  private buildBaseQuery(
+  private buildFullSelectQuery(
     baseQuery: string,
-    params: QueryParams<FieldsEnum> | CountParams<FieldsEnum>,
+    params: QueryParams<FieldsEnum>,
     additionalValues: any[] = []
   ): SQLQueryResult {
-    const joinClause = this.buildJoinClauses(params.join);
-    const whereClause = this.buildWhereClause(params.where);
-    let query = `${baseQuery} ${joinClause} ${whereClause.query}`.trim();
-    let values = [...additionalValues, ...whereClause.values];
+    const { join, where, groupBy, orderBy, pagination } = params;
+    const query = [
+      baseQuery,
+      this.buildJoinClauses(join),
+      this.buildWhereClause(where).query,
+      this.buildGroupByClause(groupBy),
+      this.buildOrderByClause(orderBy),
+      this.buildPaginationClause(pagination),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const values = [
+      ...additionalValues,
+      ...this.buildWhereClause(where).values,
+    ];
+    return { query, values };
+  }
 
-    if (this.isQueryParams(params)) {
-      const groupByClause = this.buildGroupByClause(params.groupBy);
-      const orderByClause = this.buildOrderByClause(params.orderBy);
-      const paginationClause = this.buildPaginationClause(params.pagination);
-
-      query =
-        `${query} ${groupByClause} ${orderByClause} ${paginationClause}`.trim();
-    }
-
+  private buildFullCountQuery(
+    baseQuery: string,
+    params: CountParams<FieldsEnum>,
+    additionalValues: any[] = []
+  ): SQLQueryResult {
+    const { join, where } = params;
+    const query = [
+      baseQuery,
+      this.buildJoinClauses(join),
+      this.buildWhereClause(where).query,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const values = [
+      ...additionalValues,
+      ...this.buildWhereClause(where).values,
+    ];
     return { query, values };
   }
 
@@ -99,31 +128,25 @@ export class SQLBuilder<FieldsEnum extends string>
   }
 
   private buildJoinClauses(joins?: JoinOptionsType[]): string {
-    return this.buildClause(
-      joins,
-      (join) =>
-        `${join.type || joinTypes.INNER} JOIN ${join.table} ON ${join.on}`
+    return (
+      joins
+        ?.map(
+          ({ type = joinTypes.INNER, table, on }) =>
+            `${type} JOIN ${table} ON ${on}`
+        )
+        .join(" ") || ""
     );
   }
 
   private buildWhereClause(
     where?: WhereOptionsType<FieldsEnum>[]
   ): SQLQueryResult {
-    if (!where || where.length === 0) {
-      return { query: "", values: [] };
-    }
-
-    const conditions: string[] = [];
-    const values: any[] = [];
-
-    where.forEach((condition) => {
-      const { field, operator, value } = condition;
-      conditions.push(`${field} ${operator} ?`);
-      values.push(value);
-    });
-
-    const query = `WHERE ${conditions.join(" AND ")}`;
-    return { query, values };
+    const conditions =
+      where?.map(({ field, operator }) => `${field} ${operator} ?`) || [];
+    return {
+      query: conditions.length ? `WHERE ${conditions.join(" AND ")}` : "",
+      values: where?.map((w) => w.value) || [],
+    };
   }
 
   private buildSetClause(
@@ -131,11 +154,8 @@ export class SQLBuilder<FieldsEnum extends string>
   ): SQLQueryResult {
     const fields = Object.keys(data);
     const values = Object.values(data);
-
     const setClauses = fields.map((field) => `${field} = ?`);
-    const query = setClauses.join(", ");
-
-    return { query, values };
+    return { query: setClauses.join(", "), values };
   }
 
   private buildInsertValues(data: PartialFieldValueMapType<FieldsEnum>[]): {
@@ -147,42 +167,33 @@ export class SQLBuilder<FieldsEnum extends string>
     const placeholders = data.map(
       () => `(${fields.map(() => "?").join(", ")})`
     );
-    const values = data.flatMap((row) => Object.values(row));
-
-    return { fields: fields.join(", "), placeholders, values };
-  }
-
-  private buildClause<FieldsEnum>(
-    items?: FieldsEnum[],
-    buildFn: (item: FieldsEnum) => string = (item: FieldsEnum) => `${item}`
-  ): string {
-    if (!items?.length) return "";
-    return items.map(buildFn).join(", ");
+    return {
+      fields: fields.join(", "),
+      placeholders,
+      values: data.flatMap(Object.values),
+    };
   }
 
   private buildGroupByClause(fields?: FieldsEnum[]): string {
-    return this.buildClause(fields, (field) => `GROUP BY ${field}`);
+    return fields?.length ? `GROUP BY ${fields.join(", ")}` : "";
   }
 
   private buildOrderByClause(
     orderBy?: OrderByOptionsType<FieldsEnum>[]
   ): string {
-    return this.buildClause(
-      orderBy,
-      (order) =>
-        `ORDER BY ${order.field} ${order.direction || orderByTypes.ASC}`
+    return (
+      orderBy
+        ?.map(
+          ({ field, direction = orderByTypes.ASC }) =>
+            `ORDER BY ${field} ${direction}`
+        )
+        .join(", ") || ""
     );
   }
 
   private buildPaginationClause(pagination?: PaginationOptionsType): string {
-    if (!pagination || pagination.limit === -1) return "";
-
-    return `LIMIT ${pagination.limit || 10} OFFSET ${pagination.offset || 0}`;
-  }
-
-  private isQueryParams(
-    params: QueryParams<FieldsEnum> | CountParams<FieldsEnum>
-  ): params is QueryParams<FieldsEnum> {
-    return (params as QueryParams<FieldsEnum>).pagination !== undefined;
+    return pagination && pagination.limit !== -1
+      ? `LIMIT ${pagination.limit || 10} OFFSET ${pagination.offset || 0}`
+      : "";
   }
 }
