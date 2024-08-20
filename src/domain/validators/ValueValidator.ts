@@ -1,6 +1,6 @@
+import { IValueValidator } from "../interfaces/IValueValidator";
 
-// ValueValidator.ts
-export class ValueValidator {
+export class ValueValidator implements IValueValidator {
   private readonly valueRegex = /^[^'";]*$/;
 
   validateValue(value: any): void {
