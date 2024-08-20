@@ -1,3 +1,5 @@
+import { joinTypes, JoinTypesEnum } from "../enums/JoinTypesEnum";
+import { orderByTypes, OrderByTypesEnum } from "../enums/OrderByTypesEnum";
 import { IFieldValidator } from "../interfaces/IFieldValidator";
 import { IOperatorValidator } from "../interfaces/IOperatorValidator";
 import { IValueValidator } from "../interfaces/IValueValidator";
@@ -82,11 +84,10 @@ export const validateData = <FieldsEnum extends string>(
   });
 };
 
-const isValidJoinType = (joinType: string): boolean => {
-  const validJoinTypes = ["INNER", "LEFT", "RIGHT", "FULL"];
-  return validJoinTypes.includes(joinType);
+const isValidJoinType = (joinType: string): joinType is JoinTypesEnum => {
+  return Object.values(joinTypes).includes(joinType as JoinTypesEnum);
 };
 
-const isValidOrderDirection = (direction: string): boolean => {
-  return direction === "ASC" || direction === "DESC";
+const isValidOrderDirection = (direction: string): direction is OrderByTypesEnum => {
+  return Object.values(orderByTypes).includes(direction as OrderByTypesEnum);
 };
