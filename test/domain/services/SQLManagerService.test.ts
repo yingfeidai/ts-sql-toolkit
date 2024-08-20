@@ -2,11 +2,14 @@ import { BatchInsertParams } from "../../../src/domain/dtos/BatchInsertParams";
 import { DeleteParams } from "../../../src/domain/dtos/DeleteParams";
 import { InsertParams } from "../../../src/domain/dtos/InsertParams";
 import { QueryParams } from "../../../src/domain/dtos/QueryParams";
+import { SQLQueryResult } from "../../../src/domain/dtos/SQLQueryResult";
 import { UpdateParams } from "../../../src/domain/dtos/UpdateParams";
 import { operatorTypes } from "../../../src/domain/enums/OperatorTypesEnum";
 import { ISQLBuilder } from "../../../src/domain/interfaces/ISQLBuilder";
 import { ISQLExecutor } from "../../../src/domain/interfaces/ISQLExecutor";
+import { ISQLValidator } from "../../../src/domain/interfaces/ISQLValidator";
 import { SQLManager } from "../../../src/domain/services/SQLManagerService";
+
 
 enum Fields {
   ID = "id",
@@ -18,6 +21,7 @@ describe("SQLManager", () => {
   let sqlManager: SQLManager<Fields>;
   let mockSqlExecutor: jest.Mocked<ISQLExecutor>;
   let mockSqlBuilder: jest.Mocked<ISQLBuilder<Fields>>;
+  let mockSqlValidator: jest.Mocked<ISQLValidator<Fields>>;
 
   beforeEach(() => {
     mockSqlExecutor = {
@@ -28,12 +32,21 @@ describe("SQLManager", () => {
 
     mockSqlBuilder = {
       buildSelectQuery: jest.fn(),
+      buildCountQuery: jest.fn(),
       buildInsertQuery: jest.fn(),
       buildUpdateQuery: jest.fn(),
       buildDeleteQuery: jest.fn(),
     };
 
-    sqlManager = new SQLManager(mockSqlExecutor, mockSqlBuilder);
+    mockSqlValidator = {
+      validateSelect: jest.fn(),
+      validateCount: jest.fn(),
+      validateInsert: jest.fn(),
+      validateUpdate: jest.fn(),
+      validateDelete: jest.fn(),
+    }
+
+    sqlManager = new SQLManager(mockSqlExecutor, mockSqlBuilder, mockSqlValidator);
   });
 
   it("should execute select query", async () => {
@@ -41,30 +54,36 @@ describe("SQLManager", () => {
     const params: QueryParams<Fields> = {
       where: [{ field: Fields.ID, value: 1 }],
     };
-    const query = "SELECT * FROM testTable WHERE id = 1";
+    const queryResult: SQLQueryResult = {
+      query: "SELECT * FROM testTable WHERE id = 1",
+      values: [],
+    };
     const result = [{ id: 1, name: "test" }];
 
-    mockSqlBuilder.buildSelectQuery.mockReturnValue(query);
+    mockSqlBuilder.buildSelectQuery.mockReturnValue(queryResult);
     mockSqlExecutor.queryRaw.mockResolvedValue(result);
 
     const data = await sqlManager.select(table, params);
 
     expect(mockSqlBuilder.buildSelectQuery).toHaveBeenCalledWith(table, params);
-    expect(mockSqlExecutor.queryRaw).toHaveBeenCalledWith(query);
+    expect(mockSqlExecutor.queryRaw).toHaveBeenCalledWith(queryResult.query, queryResult.values);
     expect(data).toEqual(result);
   });
 
   it("should execute insert query", async () => {
     const table = "testTable";
     const params: InsertParams<Fields> = { data: [{ id: 1, name: "test" }] };
-    const query = 'INSERT INTO testTable (id, name) VALUES (1, "test")';
+    const queryResult: SQLQueryResult = {
+      query: 'INSERT INTO testTable (id, name) VALUES (1, "test")',
+      values: [],
+    };
 
-    mockSqlBuilder.buildInsertQuery.mockReturnValue(query);
+    mockSqlBuilder.buildInsertQuery.mockReturnValue(queryResult);
 
     await sqlManager.insert(table, params);
 
     expect(mockSqlBuilder.buildInsertQuery).toHaveBeenCalledWith(table, params);
-    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith(query);
+    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith(queryResult.query, queryResult.values);
   });
 
   it("should execute update query", async () => {
@@ -73,16 +92,19 @@ describe("SQLManager", () => {
       data: { name: "newName" },
       where: [{ field: Fields.ID, value: 1 }],
     };
-    const query = 'UPDATE testTable SET name = "newName" WHERE id = 1';
+    const queryResult: SQLQueryResult = {
+      query: 'UPDATE testTable SET name = "newName" WHERE id = 1',
+      values: [],
+    };
     const affectedRows = 1;
 
-    mockSqlBuilder.buildUpdateQuery.mockReturnValue(query);
+    mockSqlBuilder.buildUpdateQuery.mockReturnValue(queryResult);
     mockSqlExecutor.executeRaw.mockResolvedValue(affectedRows);
 
     const result = await sqlManager.update(table, params);
 
     expect(mockSqlBuilder.buildUpdateQuery).toHaveBeenCalledWith(table, params);
-    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith(query);
+    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith(queryResult.query, queryResult.values);
     expect(result).toEqual({ affectedRows });
   });
 
@@ -91,16 +113,19 @@ describe("SQLManager", () => {
     const params: DeleteParams<Fields> = {
       where: [{ field: Fields.ID, value: 1 }],
     };
-    const query = "DELETE FROM testTable WHERE id = 1";
+    const queryResult: SQLQueryResult = {
+      query: "DELETE FROM testTable WHERE id = 1",
+      values: [],
+    };
     const affectedRows = 1;
 
-    mockSqlBuilder.buildDeleteQuery.mockReturnValue(query);
+    mockSqlBuilder.buildDeleteQuery.mockReturnValue(queryResult);
     mockSqlExecutor.executeRaw.mockResolvedValue(affectedRows);
 
     const result = await sqlManager.delete(table, params);
 
     expect(mockSqlBuilder.buildDeleteQuery).toHaveBeenCalledWith(table, params);
-    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith(query);
+    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith(queryResult.query, queryResult.values);
     expect(result).toEqual({ affectedRows });
   });
 
@@ -144,9 +169,11 @@ describe("SQLManager", () => {
   it("should execute transaction", async () => {
     const operations: ((executor: ISQLExecutor) => Promise<void>)[] = [
       async (executor) => {
-        await executor.executeRaw(
-          'INSERT INTO testTable (id, name) VALUES (1, "test")'
-        );
+        const queryResult: SQLQueryResult = {
+          query: 'INSERT INTO testTable (id, name) VALUES (1, "test")',
+          values: [],
+        };
+        await executor.executeRaw(queryResult.query, queryResult.values);
       },
     ];
 
@@ -170,8 +197,8 @@ describe("SQLManager", () => {
 
     const operations: ((executor: ISQLExecutor) => Promise<void>)[] =
       params.map((param) => async (executor) => {
-        const query = mockSqlBuilder.buildUpdateQuery(table, param);
-        await executor.executeRaw(query);
+        const queryResult: SQLQueryResult = mockSqlBuilder.buildUpdateQuery(table, param);
+        await executor.executeRaw(queryResult.query, queryResult.values);
       });
 
     await sqlManager.executeTransaction(operations);
@@ -195,8 +222,8 @@ describe("SQLManager", () => {
 
     const operations: ((executor: ISQLExecutor) => Promise<void>)[] =
       params.map((param) => async (executor) => {
-        const query = mockSqlBuilder.buildDeleteQuery(table, param);
-        await executor.executeRaw(query);
+        const queryResult: SQLQueryResult = mockSqlBuilder.buildDeleteQuery(table, param);
+        await executor.executeRaw(queryResult.query, queryResult.values);
       });
 
     await sqlManager.executeTransaction(operations);
@@ -207,11 +234,13 @@ describe("SQLManager", () => {
   it("should handle errors during a transaction", async () => {
     const operations: ((executor: ISQLExecutor) => Promise<void>)[] = [
       async (executor) => {
-        await executor.executeRaw(
-          'INSERT INTO testTable (id, name) VALUES (1, "test")'
-        );
+        const queryResult: SQLQueryResult = {
+          query: 'INSERT INTO testTable (id, name) VALUES (1, "test")',
+          values: [],
+        };
+        await executor.executeRaw(queryResult.query, queryResult.values);
       },
-      async (executor) => {
+      async () => {
         throw new Error("Transaction error");
       },
     ];
@@ -231,11 +260,13 @@ describe("SQLManager", () => {
   it("should rollback a transaction on error", async () => {
     const operations: ((executor: ISQLExecutor) => Promise<void>)[] = [
       async (executor) => {
-        await executor.executeRaw(
-          'INSERT INTO testTable (id, name) VALUES (1, "test")'
-        );
+        const queryResult: SQLQueryResult = {
+          query: 'INSERT INTO testTable (id, name) VALUES (1, "test")',
+          values: [],
+        };
+        await executor.executeRaw(queryResult.query, queryResult.values);
       },
-      async (executor) => {
+      async () => {
         throw new Error("Rollback error");
       },
     ];
@@ -246,7 +277,7 @@ describe("SQLManager", () => {
           await op(mockSqlExecutor);
         }
       } catch (error) {
-        await mockSqlExecutor.executeRaw("ROLLBACK");
+        await mockSqlExecutor.executeRaw("ROLLBACK", []);
         throw error;
       }
     });
@@ -255,6 +286,6 @@ describe("SQLManager", () => {
       "Rollback error"
     );
     expect(mockSqlExecutor.executeTransaction).toHaveBeenCalledWith(operations);
-    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith("ROLLBACK");
+    expect(mockSqlExecutor.executeRaw).toHaveBeenCalledWith("ROLLBACK", []);
   });
 });
