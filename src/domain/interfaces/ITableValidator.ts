@@ -1,3 +1,3 @@
 export interface ITableValidator {
-  validateTableName(tableName: string): void;
+  validateTableName(tableName: string): void
 }

@@ -1,5 +1,5 @@
-import { PartialFieldValueMapType } from "../types/PartialFieldValueMapType";
+import { PartialFieldValueMapType } from '../types/PartialFieldValueMapType'
 
 export type InsertParams<FieldsEnum extends string> = {
-  data: PartialFieldValueMapType<FieldsEnum>[];
-};
+  data: PartialFieldValueMapType<FieldsEnum>[]
+}

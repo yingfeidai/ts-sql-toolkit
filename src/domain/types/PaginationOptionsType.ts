@@ -1,4 +1,4 @@
 export type PaginationOptionsType = {
-  limit?: number;
-  offset?: number;
-};
+  limit?: number
+  offset?: number
+}

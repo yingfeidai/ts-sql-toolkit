@@ -1,6 +1,6 @@
-import { OrderByTypesEnum } from "../enums/OrderByTypesEnum";
+import { OrderByTypesEnum } from '../enums/OrderByTypesEnum'
 
 export type OrderByOptionsType<T> = {
-  field: T;
-  direction?: OrderByTypesEnum;
-};
+  field: T
+  direction?: OrderByTypesEnum
+}

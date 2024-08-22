@@ -1,7 +1,7 @@
-import { JoinTypesEnum } from "../enums/JoinTypesEnum";
+import { JoinTypesEnum } from '../enums/JoinTypesEnum'
 
 export type JoinOptionsType = {
-  table: string;
-  on: string;
-  type?: JoinTypesEnum;
-};
+  table: string
+  on: string
+  type?: JoinTypesEnum
+}
