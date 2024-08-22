@@ -1,4 +1,4 @@
 export type SQLQueryResult = {
-  query: string;
-  values: any[];
-};
+  query: string
+  values: any
+}
