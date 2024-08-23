@@ -1,1 +1,1 @@
-export type FindByIdParams = { id: number };
+export type FindByIdParams = { id: number }

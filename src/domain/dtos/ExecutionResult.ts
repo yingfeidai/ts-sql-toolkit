@@ -1,10 +1,10 @@
-import { PartialFieldValueMapType } from "../types/PartialFieldValueMapType";
+import { PartialFieldValueMapType } from '../types/PartialFieldValueMapType'
 
 export type ExecutionResult = {
-  affectedRows: number;
-};
+  affectedRows: number
+}
 
 export type BatchExecutionErrorResult<FieldsEnum extends string> = {
-  data: PartialFieldValueMapType<FieldsEnum>[];
-  error: Error;
-}[];
+  data: PartialFieldValueMapType<FieldsEnum>[]
+  error: Error
+}[]

@@ -1,7 +1,7 @@
 export interface ISQLExecutor {
-  queryRaw<T>(query: string, values?: any[]): Promise<T[]>;
-  executeRaw(query: string, values?: any[]): Promise<number>;
+  queryRaw(query: string, values?: any): Promise<any>
+  executeRaw(query: string, values?: any): Promise<number>
   executeTransaction(
-    operations: ((executor: ISQLExecutor) => Promise<void>)[]
-  ): Promise<void>;
+    operations: ((executor: ISQLExecutor) => Promise<void>)[],
+  ): Promise<void>
 }

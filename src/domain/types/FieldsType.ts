@@ -1,1 +1,1 @@
-export type FieldsType<T> = T[keyof T];
+export type FieldsType<T> = T[keyof T]

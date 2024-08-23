@@ -1,4 +1,4 @@
 export interface IOperatorValidator {
-  validateOperator(operator: string): void;
-  validateOperators(operators: string[]): void;
+  validateOperator(operator: string): void
+  validateOperators(operators: string[]): void
 }
